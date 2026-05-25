@@ -1,83 +1,30 @@
-Alangilan T-intersection SUMO Simulation
-=========================================
-Capstone Project — BS Electronics Engineering, Batangas State University
-"Designing a Machine Learning Based Predictive Traffic Light System"
+Tramini single-scenario pipeline (Week 1, 06:00-08:00, 2 h).
 
-LOCATION
---------
-Alangilan T-intersection, Batangas City
-- Highway: Alangilan-Balagtas (west) <-> Alangilan-Kumintang (east)
-- Local:   Golden Country Homes (GCH) subdivision exit/entrance (south)
+Inputs:
+  tramini/Copy of MANUAL COUNT DATA.xlsx   — 7 daily count sheets (Week 1)
+  C:/tprog/traf/t2test/alangilan.net.xml   — reference SUMO network
 
-SCENARIO
---------
-Morning Peak:  6:00 – 7:00 AM  (simulation time 0–3600 s)
-Data source:   Manual Count, Dec 9 2025
+Intermediates (all under tramini/data/):
+  step1_excel_extract/day_<sheet>_raw.csv          (Step 1, per-sheet dump)
+  step1_excel_extract/day_<sheet>_period_0608.json (Step 1, period parse)
+  step2_averaged.json                              (Step 1, 7-day avg)
+  step3_normalized_vph.json                        (Step 1, normalized vph)
+  step4_flow_table.csv                             (Step 1, flow audit)
+  step5_collect/raw_phase_events.csv               (Step 2, per-event)
+  step5_collect/collect_summary.json               (Step 2, counts)
+  week1_0608_phases.csv                            (Step 2, master)
+  step6_preprocess/cleaned_phases.csv              (Step 3)
+  step6_preprocess/features_X.csv                  (Step 3)
+  step6_preprocess/labels_y.csv                    (Step 3)
+  step6_preprocess/split_summary.json              (Step 3)
+  X_train.npy / X_test.npy / y_train.npy / y_test.npy / scaler_params.npz
+  models/model_highway.pkl + models/model_gch.pkl  (Step 4)
+  step7_train/highway_metrics.json + gch_metrics.json
+  week1_0608_adaptive_log.csv                      (Step 5)
+  step8_simulate/predictions_trace.csv             (Step 5)
+  step9_evaluate/comparison.json                   (Step 6)
 
-Traffic volumes used (morning peak, per hour):
-  Highway  Balagtas → Kumintang : ~502 vph
-  Highway  Kumintang → Balagtas : ~435 vph
-  GCH Exiting → Highway         :  ~54 vph
-  Highway Entering → GCH        :  ~88 vph
-
-Vehicle types included:
-  Tricycle, Private Car, Van/UV, Jeepney, Mini Bus, Bus,
-  Light Truck, Heavy Truck
-
-FILES
------
-  alangilan.nod.xml   — Junction nodes (4 nodes)
-  alangilan.edg.xml   — Road edges (6 edges)
-  alangilan.con.xml   — Lane connections at intersection
-  alangilan.rou.xml   — Vehicle types + routes + demand flows
-  alangilan.sumocfg   — SUMO run configuration
-  build_network.bat   — Generates alangilan.net.xml via netconvert
-  output/             — Simulation output files written here
-
-HOW TO RUN
-----------
-1. Open a command prompt in this folder (t2test).
-
-2. Build the network (run once):
-      build_network.bat
-
-3. Run the simulation (headless):
-      sumo -c alangilan.sumocfg
-
-   OR with the GUI:
-      sumo-gui -c alangilan.sumocfg
-
-4. Outputs appear in the output\ folder:
-      summary.xml   — per-step vehicle counts and waiting times
-      tripinfo.xml  — per-trip statistics (waiting time, travel time)
-      fcd.xml       — floating car data (position/speed per step, for ML)
-      queue.xml     — queue lengths per lane per step
-
-TRACI INTEGRATION
------------------
-To connect Python/TraCI for adaptive signal control:
-
-    import traci
-    traci.start(["sumo", "-c", "alangilan.sumocfg"])
-    tls_id = "intersection"
-    while traci.simulation.getMinExpectedNumber() > 0:
-        traci.simulationStep()
-        # query detectors, compute phase, set new phase:
-        # traci.trafficlight.setPhase(tls_id, new_phase)
-    traci.close()
-
-ADDITIONAL SCENARIOS
---------------------
-To simulate midday or evening peak, adjust the flow vehsPerHour values
-in alangilan.rou.xml using the following source data counts:
-
-  Midday 12:00–1:00 PM:
-    Highway Lane 1 (Balagtas): ~454 vph
-    Highway Lane 2 (Kumintang): ~658 vph
-    GCH Exit: ~48 vph  |  GCH Enter: ~48 vph
-
-  Evening Peak 5:30–6:30 PM:
-    Highway Lane 1 (Balagtas): ~1103 vph
-    Highway Lane 2 (Kumintang): ~1071 vph
-    GCH Exit: ~74 vph  |  GCH Enter: ~60 vph
-
+Final output: tramini/output/evaluation_summary.csv (one row, week1_0608).
+The SUMO scenario folder tramini/output/week1_0608/ holds alangilan_week1_0608.rou.xml
+and alangilan_week1_0608.sumocfg from Step 1; Step 2 and Step 5 both replay
+this same .sumocfg, the difference being which controller drives the TLS.
